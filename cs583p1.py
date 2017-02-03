@@ -1,5 +1,5 @@
 ###
-# Author: Hai Tran
+# Author: Hai & Kevin
 # CS 583
 # Project 1
 ###
@@ -151,7 +151,7 @@ def MScandidate_gen(k, F_prev, sdc):
 
 
 ##########
-# Main function
+# Main
 ##########
 
 # MIS
