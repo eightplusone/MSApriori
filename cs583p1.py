@@ -168,4 +168,8 @@ must_have = [[20], [40], [50]]
 transaction_db, items = get_input("input-data.txt")
 
 # Run
-MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have)
+result = MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have)
+
+for r in result:
+    print r
+    
