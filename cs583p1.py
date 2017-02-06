@@ -61,12 +61,14 @@ def MSApriori(transaction_db, items, mis, sdc):
     for j in range(1, len(M)):
         if freq( transaction_db, [M[j]] ) >= float(n) * mis[ M[0] ] :
             L.append( M[j] )
+            count[ tuple( [M[j]] )] = freq(transaction_db, [M[j]] )
 
     # F1
     F[1] = []
     for item in L:
         if freq( transaction_db, [item] ) >= float(n) * mis[item]:
             F[1].append(item)
+            count[ tuple( [item] )] = freq(transaction_db, [item] )
 
     # Generate candidates and count them
     k = 2
@@ -76,31 +78,35 @@ def MSApriori(transaction_db, items, mis, sdc):
         if k == 2:
             C[2] = level2_candidate_gen(L, sdc)
             for c in C[2]:
-                count[ tuple(c) ] = 0
-                tail_count[ tuple(c) ] = 0
+                d = tuple(sorted(c))
+                count[d] = 0
+                tail_count[d] = 0
 
         if k > 2:
             C[k] = MScandidate_gen(F[k-1], sdc)
             for c in C[k]:
-                count[ tuple(c) ] = 0
-                tail_count[ tuple(c) ] = 0
+                d = tuple(sorted(c))
+                count[d] = 0
+                tail_count[d] = 0
 
         for t in transaction_db:
             for c in C[k]:
 
                 if set(t) & set(c) == set(c):
-                    count[ tuple(c) ] += 1
-                    tail_count[ tuple(c) ] += 1
+                    d = tuple(sorted(c))
+                    count[d] += 1
+                    tail_count[d] += 1
 
                 if set(t) & set(c[1:]) == set(c[1:]):    # tail count
                     tail = tuple(c[1:])
-                    if tail in count.keys():
-                        count[tail] += 1
+                    if tail in tail_count.keys():
+                        tail_count[tail] += 1
                     else:
-                        count[tail] = 1
+                        tail_count[tail] = 1
         
         for c in C[k]:
-            if count[ tuple(c) ] >= n * mis[ c[1] ]:
+            d = tuple(sorted(c))
+            if count[d] >= n * mis[ c[1] ]:
                 F[k].append(c)
 
         k += 1
@@ -221,6 +227,24 @@ transaction_db, items = get_input("input-data.txt")
 
 # Run
 F, count, tailCount = MSApriori(transaction_db, items, mis, sdc)
-print F
+
+# Constraints
 F = apply_constraints(F, cannot_be_together, must_have)
-print F
+
+# Generate a dictionary from F to be able to print output in the desired format
+F_dict = {}
+for f in F:
+    F_dict[len(f)] = []
+    F_dict[len(f)].append(f)
+
+print ""
+for i in range(len(mis)):
+    if i in F_dict.keys():
+        print "Frequent %d-itemsets\n" % (i)
+        
+        for f in F_dict[i]:
+            print "    %d : " % count[tuple(f)] + "{%s}" % ", ".join(map(str, f))
+            if i > 1:
+                print "Tailcount = %d" % tailCount[tuple(f)]
+
+        print "\n    Total number of freuqent %d-itemsets = %d\n\n" % (i, len(F_dict[i]))
