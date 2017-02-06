@@ -40,25 +40,17 @@ def count(transaction_db, itemgroup):
 # Support
 ##########
 def sup(transaction_db, itemgroup):
-    return count( transaction_db, itemgroup ) / len(transaction_db)
-
-
-##########
-# Confidence
-##########
-def conf(transaction_db, itemgroup, item):
-    return count( transaction_db, itemgroup ) / len(transaction_db)
+    return float(count( transaction_db, itemgroup )) / len(transaction_db)
 
 
 ##########
 # MSApriori algorithm
 ##########
-def MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have):
+def MSApriori(transaction_db, items, mis, sdc):
     output = []
     F = [[]] * ( len(mis) + 1 )
     C = [[]] * ( len(mis) + 1 )
     candidate_count = {}
-    tail_count = {}
 
     # Sort the itemlist by its items' MIS
     M = sorted(items, key = lambda i : mis[i])
@@ -82,20 +74,24 @@ def MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have):
             C[2] = level2_candidate_gen(L, sdc)
             for candidate in C[2]:
                 candidate_count[ tuple(candidate) ] = 0
-                tail_count[ tuple(candidate) ] = 0
         else:
             C[k] = MScandidate_gen(k, F[k-1], sdc)
             F[k] = []
             for candidate in C[k]:
                 candidate_count[ tuple(candidate) ] = 0
-                tail_count[ tuple(candidate) ] = 0
 
-        for transaction in transaction_db:
-            for candidate in C[k]:
-                if set(transaction) & set(candidate) == set(candidate):
-                    candidate_count[ tuple(candidate) ] += 1
-                if set(transaction) & set(candidate[1:]) == set(candidate[1:]):
-                    tail_count[ tuple(candidate) ] += 1
+        for t in transaction_db:
+            for c in C[k]:
+
+                if set(t) & set(c) == set(c):
+                    candidate_count[ tuple(c) ] += 1
+
+                if set(t) & set(c[1:]) == set(c[1:]):    # tail count
+                    tail = tuple(c[1:])
+                    if tail in candidate_count.keys():
+                        candidate_count[tail] += 1
+                    else:
+                        candidate_count[tail] = 1
         
         for c in C[k]:
             if candidate_count[ tuple(c) ] >= len(transaction_db) * mis[ c[1] ]:
@@ -103,7 +99,18 @@ def MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have):
 
         k += 1
 
-    return F
+    # Remove duplications
+    result = []
+    for item in F[1]:
+        if not item in result:
+            result.append([item])
+
+    for k in range(2, len(F)):
+        for group in F[k]:
+            if not group in result:
+                result.append(group)
+
+    return result
 
 
 ##########
@@ -111,12 +118,13 @@ def MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have):
 ##########
 def level2_candidate_gen(L, sdc):
     C2 = []    # initialize the set of candidates
-    for i in range(1, len(L)-1):
+    for i in range(0, len(L)-1):
         l = L[i]
         if count( transaction_db, [l] ) >= float(len(transaction_db)) * mis[l]:
             for j in range (i+1, len(L)):
                 h = L[j]
-                if count( transaction_db, [h] ) >= float(len(transaction_db)) * mis[l] and abs(sup(transaction_db, [h] ) - sup(transaction_db, [l] )) <= sdc:
+                if count( transaction_db, [h] ) >= float(len(transaction_db)) * mis[l] \
+                and abs( sup(transaction_db, [h]) - sup(transaction_db, [l]) ) <= sdc:
                     C2.append([l, h])    # insert the candidate [l, h] into C2
 
     return C2
@@ -137,7 +145,7 @@ def MScandidate_gen(k, F_prev, sdc):
             # find all pairs of frequent itemsets that differ only in the last item
             if f1[:-2] == f2[:-2] and f1[-1] < f2[-1] and \
                 abs( sup( transaction_db, [f1[-1]] ) - sup(  transaction_db, [f2[-1]] ) ) <= sdc:
-                    
+                
                 c = f1.append(f2[-1])    # join the two itemsets f1 and f2
                 Ck.append(c)             # insert the candidate itemset c into Ck
 
@@ -148,6 +156,34 @@ def MScandidate_gen(k, F_prev, sdc):
                             Ck.remove(s)       # delete c from the set of candidates
 
     return Ck
+
+
+##########
+# Apply constraints: cannot_be_together and must_have
+##########
+def apply_constraints(F, cannot_be_together, must_have):
+    for f in F:
+        is_removed = False
+
+        for c in cannot_be_together:
+            if is_removed:
+                break
+            
+            # if c is a subset of group, remove this group from result
+            if set(f) & set(c) == set(c):
+                F.remove(f)
+                is_removed = True
+
+        for m in must_have:
+            if is_removed:
+                break
+
+            # if the intersection between m and group is empty, remove this group from result
+            if not (set(f) & set(m)):
+                F.remove(f)
+                is_removed = True
+
+    return F
 
 
 ##########
@@ -168,8 +204,6 @@ must_have = [[20], [40], [50]]
 transaction_db, items = get_input("input-data.txt")
 
 # Run
-result = MSApriori(transaction_db, items, mis, sdc, cannot_be_together, must_have)
-
-for r in result:
-    print r
-    
+F = MSApriori(transaction_db, items, mis, sdc)
+F = apply_constraints(F, cannot_be_together, must_have)
+print F
