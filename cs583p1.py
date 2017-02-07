@@ -115,14 +115,14 @@ def MSApriori(transaction_db, items, mis, sdc):
         if k == 2:
             C[2] = level2_candidate_gen(L, sdc)
             for c in C[2]:
-                d = tuple(sorted(c))
+                d = tuple(sorted(c, key = lambda i : mis[i]))
                 count[d] = 0
                 tail_count[d] = 0
 
         if k > 2:
             C[k] = MScandidate_gen(F[k-1], sdc)
             for c in C[k]:
-                d = tuple(sorted(c))
+                d = tuple(sorted(c, key = lambda i : mis[i]))
                 count[d] = 0
                 tail_count[d] = 0
 
@@ -130,7 +130,7 @@ def MSApriori(transaction_db, items, mis, sdc):
             for c in C[k]:
 
                 if set(t) & set(c) == set(c):
-                    d = tuple(sorted(c))
+                    d = tuple(sorted(c, key = lambda i : mis[i]))
                     count[d] += 1
                     tail_count[d] += 1
 
@@ -142,8 +142,8 @@ def MSApriori(transaction_db, items, mis, sdc):
                         tail_count[tail] = 1
         
         for c in C[k]:
-            d = tuple(sorted(c))
-            if count[d] >= n * mis[ c[1] ]:
+            d = tuple(sorted(c, key = lambda i : mis[i]))
+            if count[d] >= n * mis[ c[0] ]:
                 F[k].append(c)
 
         k += 1
@@ -258,11 +258,13 @@ F, count, tailCount = MSApriori(transaction_db, items, mis, sdc)
 
 # Constraints
 F = apply_constraints(F, cannot_be_together, must_have)
+print F
 
 # Generate a dictionary from F to be able to print output in the desired format
 F_dict = {}
 for f in F:
-    F_dict[len(f)] = []
+    if len(f) not in F_dict.keys():
+        F_dict[len(f)] = []
     F_dict[len(f)].append(f)
 
 # Start writing output
@@ -274,9 +276,10 @@ for i in range(len(mis)):
         output += "Frequent " + str(i) + "-itemsets\n\n"
         
         for f in F_dict[i]:
-            output += "    " + str(count[tuple(f)]) + " : " + "{" + ", ".join(map(str, f)) + "}\n"
+            d = tuple(sorted(f, key = lambda i : mis[i]))
+            output += "    " + str(count[d]) + " : " + "{" + ", ".join(map(str, f)) + "}\n"
             if i > 1:
-                output += "Tailcount = " + str(tailCount[tuple(f)]) + "\n"
+                output += "Tailcount = " + str(tailCount[d]) + "\n"
 
         output += "\n    Total number of frequent " + str(i) + "-itemsets = " + str(len(F_dict[i])) + "\n\n\n"
 

@@ -9,7 +9,9 @@ Frequent 2-itemsets
 
     6 : {20, 80}
 Tailcount = 6
+    2 : {50, 90}
+Tailcount = 2
 
-    Total number of frequent 2-itemsets = 1
+    Total number of frequent 2-itemsets = 2
 
 
