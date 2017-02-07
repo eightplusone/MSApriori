@@ -26,6 +26,43 @@ def get_input(in_file):
 
 
 ##########
+# Read parameters
+##########
+def get_param(param_file):
+    sdc = 0
+    mis = {}
+    cannot_be_together = []
+    must_have = []
+
+    file = open(param_file, "r")
+
+    for line in file:
+
+        if line[:3] == "MIS":
+            l = re.match(r"MIS\((\d+)\)\s=\s(.*)", line)
+            mis[int(l.group(1))] = float(l.group(2))
+        
+        if line[:3] == "SDC":
+            l = re.match(r"SDC\s=\s(.*)", line)
+            sdc = float(l.group(1))
+        
+        if line[:18] == "cannot_be_together":
+            group = re.findall("{(\d+(,*\s*\d+)*)}", line)
+            for g in group:
+                items = re.findall(r"\d+", g[0])
+                items = [int(i) for i in items]
+                cannot_be_together.append(items)
+        
+        if line[:9] == "must-have":
+            items = re.findall(r"\d+", line)
+            items = [int(i) for i in items]
+            for i in items:
+                must_have.append([i])
+
+    file.close()
+    return sdc, mis, cannot_be_together, must_have
+
+##########
 # Count the occurences of a group of items in the transaction database
 ##########
 def freq(transaction_db, itemgroup):
@@ -212,18 +249,9 @@ def apply_constraints(F, cannot_be_together, must_have):
 # Main
 ##########
 
-# MIS
-mis = {10:0.43, 20:0.30, 30:0.40, 40:0.40, 50:0.40, 60:0.30, 70:0.20, 80:0.20, 90:0.20, 100:0.10, 120:0.20, 140:0.15}
-
-# Support difference constraint
-sdc = 0.1
-
-# Item constraints
-cannot_be_together = [[20, 40], [70, 80]]
-must_have = [[20], [40], [50]]
-
-# Transactions
+# Read files for input and parameters
 transaction_db, items = get_input("input-data.txt")
+sdc, mis, cannot_be_together, must_have = get_param("parameter-file.txt")
 
 # Run
 F, count, tailCount = MSApriori(transaction_db, items, mis, sdc)
@@ -237,14 +265,20 @@ for f in F:
     F_dict[len(f)] = []
     F_dict[len(f)].append(f)
 
-print ""
+# Start writing output
+output = ""
+f_out = open("output.txt", "w")
+
 for i in range(len(mis)):
     if i in F_dict.keys():
-        print "Frequent %d-itemsets\n" % (i)
+        output += "Frequent " + str(i) + "-itemsets\n\n"
         
         for f in F_dict[i]:
-            print "    %d : " % count[tuple(f)] + "{%s}" % ", ".join(map(str, f))
+            output += "    " + str(count[tuple(f)]) + " : " + "{" + ", ".join(map(str, f)) + "}\n"
             if i > 1:
-                print "Tailcount = %d" % tailCount[tuple(f)]
+                output += "Tailcount = " + str(tailCount[tuple(f)]) + "\n"
 
-        print "\n    Total number of freuqent %d-itemsets = %d\n\n" % (i, len(F_dict[i]))
+        output += "\n    Total number of frequent " + str(i) + "-itemsets = " + str(len(F_dict[i])) + "\n\n\n"
+
+f_out.write(output)
+f_out.close()
